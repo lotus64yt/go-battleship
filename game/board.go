@@ -19,25 +19,34 @@ type Board struct {
 	Cells [9][9]Cell
 }
 
+type PlacedShip struct {
+	StartX, StartY int
+	EndX, EndY     int
+}
+
 type GameState int
 
 type Game struct {
-	Board Board
+	Board      Board
+	EnemyBoard Board
 
 	ShipsPlaced map[int]int
-	playerTurn  bool
+	Ships       []PlacedShip
+	PlayerTurn  bool
 
-	State     GameState
-	LastInput string
-	LastError string
+	State            GameState
+	OtherPlayerState GameState
+	LastInput        string
+	LastError        string
 }
 
 func NewGame(creator bool) *Game {
 	return &Game{
 		ShipsPlaced: make(map[int]int),
 
-		playerTurn: creator,
-		State:      PlacingShips,
+		PlayerTurn:       creator,
+		State:            PlacingShips,
+		OtherPlayerState: PlacingShips,
 	}
 }
 
@@ -63,13 +72,13 @@ func (b *Board) BoardString() []string {
 		for _, cell := range row {
 			switch cell {
 			case Empty:
-				line = fmt.Sprintf("%s. ", line)
+				line = fmt.Sprintf("%s\033[34m.\033[0m ", line)
 			case Ship:
-				line = fmt.Sprintf("%sS ", line)
+				line = fmt.Sprintf("%s\033[90mS\033[0m ", line)
 			case Hit:
-				line = fmt.Sprintf("%sX ", line)
+				line = fmt.Sprintf("%s\033[31mX\033[0m ", line)
 			case Miss:
-				line = fmt.Sprintf("%so ", line)
+				line = fmt.Sprintf("%s\033[37mo\033[0m ", line)
 			default:
 				line = fmt.Sprintf("%s? ", line)
 			}
@@ -83,7 +92,11 @@ func (b *Board) BoardString() []string {
 func (g *Game) PlaceShip(content string) error {
 	content = strings.ReplaceAll(content, ">", "")
 	content = strings.ReplaceAll(content, "\n", "")
-	args := strings.Split(content, " ")
+	content = strings.TrimSpace(content)
+	args := strings.Fields(content)
+	if len(args) < 2 {
+		return fmt.Errorf("invalid placement")
+	}
 	startNotation, endNotation := args[0], args[1]
 	startX, startY := utilsboard.NotationToCoords(startNotation)
 	endX, endY := utilsboard.NotationToCoords(endNotation)
@@ -153,69 +166,73 @@ func (g *Game) PlaceShip(content string) error {
 	}
 
 	g.ShipsPlaced[length]++
+	g.Ships = append(g.Ships, PlacedShip{startX, startY, endX, endY})
 
 	return nil
 }
 
 func (g *Game) IsSinked(x, y int) bool {
-	rows := len(g.Board.Cells)
-	cols := len(g.Board.Cells[0])
+	for _, s := range g.Ships {
+		minX, maxX := s.StartX, s.EndX
+		if minX > maxX {
+			minX, maxX = maxX, minX
+		}
+		minY, maxY := s.StartY, s.EndY
+		if minY > maxY {
+			minY, maxY = maxY, minY
+		}
 
-	isOccupied := func(cx, cy int) bool {
-		return cx >= 0 && cx < rows && cy >= 0 && cy < cols &&
-			(g.Board.Cells[cx][cy] == Ship || g.Board.Cells[cx][cy] == Hit)
+		if x >= minX && x <= maxX && y >= minY && y <= maxY {
+			for cx := minX; cx <= maxX; cx++ {
+				for cy := minY; cy <= maxY; cy++ {
+					if g.Board.Cells[cx][cy] == Ship {
+						return false
+					}
+				}
+			}
+			return true
+		}
 	}
+	return false
+}
 
-	horizontal := (y > 0 && isOccupied(x, y-1)) || (y < cols-1 && isOccupied(x, y+1))
-	if horizontal {
-		for cy := y - 1; cy >= 0 && isOccupied(x, cy); cy-- {
-			if g.Board.Cells[x][cy] == Ship {
+func (g *Game) IsGameOver() bool {
+	for i := 0; i < len(g.Board.Cells); i++ {
+		for j := 0; j < len(g.Board.Cells[0]); j++ {
+			if g.Board.Cells[i][j] == Ship {
 				return false
 			}
 		}
-		for cy := y + 1; cy < cols && isOccupied(x, cy); cy++ {
-			if g.Board.Cells[x][cy] == Ship {
-				return false
-			}
-		}
-		return true
 	}
-
-	vertical := (x > 0 && isOccupied(x-1, y)) || (x < rows-1 && isOccupied(x+1, y))
-	if vertical {
-		for cx := x - 1; cx >= 0 && isOccupied(cx, y); cx-- {
-			if g.Board.Cells[cx][y] == Ship {
-				return false
-			}
-		}
-		for cx := x + 1; cx < rows && isOccupied(cx, y); cx++ {
-			if g.Board.Cells[cx][y] == Ship {
-				return false
-			}
-		}
-		return true
-	}
-
 	return true
 }
 
-func (g *Game) Fire(notation string) (bool, bool) {
+func (g *Game) Fire(notation string) (bool, bool, bool) {
 	x, y := utilsboard.NotationToCoords(notation)
 
 	cell := g.Board.Cells[x][y]
-	g.playerTurn = !g.playerTurn
+	g.PlayerTurn = !g.PlayerTurn
 
 	if cell == Ship {
 		g.Board.Cells[x][y] = Hit
-		return true, g.IsSinked(x, y)
+		sunk := g.IsSinked(x, y)
+
+		if sunk && g.IsGameOver() {
+			g.State = Finished
+			g.OtherPlayerState = Finished
+			return true, sunk, true
+		}
+
+		return true, sunk, false
 	}
 
 	g.Board.Cells[x][y] = Miss
-	return false, false
+	return false, false, false
 }
 
 func (g *Game) PrintPlacementBoard() {
-	fmt.Println("\n")
+	fmt.Println()
+	fmt.Println()
 	check := func(v bool) string {
 		if v {
 			return "X"
@@ -224,8 +241,12 @@ func (g *Game) PrintPlacementBoard() {
 	}
 
 	board := g.Board.BoardString()
+	otherPlayerState := "Placing"
+	if g.OtherPlayerState == Playing {
+		otherPlayerState = "Ready!"
+	}
 
-	fmt.Printf("Place your ships (Other player: Placing)\n")
+	fmt.Printf("Place your ships (Other player: %s)\n", otherPlayerState)
 	fmt.Println()
 
 	remaingShips := []string{
@@ -253,4 +274,35 @@ func (g *Game) PrintPlacementBoard() {
 	} else {
 		fmt.Print("> ")
 	}
+}
+
+func (g *Game) PrintGameBoards() {
+	fmt.Println()
+	fmt.Println()
+
+	turn := "opponent"
+	if g.PlayerTurn {
+		turn = "your"
+	}
+
+	fmt.Printf("Its %s turn!\n", turn)
+
+	fmt.Printf("%-20s     %-20s\n\n", fmt.Sprintf("%15s", "Your Board"), fmt.Sprintf("%15s", "Opponent Board"))
+
+	enemy := g.EnemyBoard.BoardString()
+
+	for i, l := range g.Board.BoardString() {
+		fmt.Printf("%s   %s\n", l, enemy[i])
+	}
+
+	if g.LastError != "" {
+		fmt.Printf("\033[31m> %s\033[0m\n", g.LastInput)
+		fmt.Printf("\033[31m%s\033[0m\n", g.LastError)
+	} else {
+		fmt.Print("> ")
+	}
+}
+
+func (g *Game) IsAllShipsPlaced() bool {
+	return g.ShipsPlaced[5] >= 1 && g.ShipsPlaced[4] >= 1 && g.ShipsPlaced[3] >= 1 && g.ShipsPlaced[3] >= 2 && g.ShipsPlaced[2] >= 1
 }

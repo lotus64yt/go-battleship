@@ -3,9 +3,14 @@ package console
 import (
 	"bufio"
 	"os"
+	"strings"
 )
 
 func ReadLine() (string, error) {
 	reader := bufio.NewReader(os.Stdin)
-	return reader.ReadString('\n')
+	str, err := reader.ReadString('\n')
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimRight(str, "\r\n"), nil
 }

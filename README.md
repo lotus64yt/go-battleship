@@ -16,8 +16,8 @@ GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o battleship main.go
 
 To build for Windows:
 
-```bash
-GOOS=windows GOARCH=amd64 go build -ldflags="-s -w" -o battleship.exe main.go
+```cmd
+go build -ldflags="-s -w" -o battleship.exe main.go
 ```
 
 To run the game:

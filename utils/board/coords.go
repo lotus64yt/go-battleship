@@ -27,7 +27,7 @@ func NotationToCoords(notation string) (int, int) {
 	lineIdx := array.IndexOf(alphabet, line)
 	colIdx := array.IndexOf(numbers, col)
 
-	return lineIdx + 1, colIdx + 1
+	return lineIdx, colIdx
 }
 
 func CoordsToNotation(x, y int) string {

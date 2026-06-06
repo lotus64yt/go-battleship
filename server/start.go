@@ -47,7 +47,7 @@ func (s *Server) Start() error {
 
 	fmt.Println("Player connected!")
 
-	game.StartGame(conn)
+	game.StartGame(conn, true)
 
 	return nil
 }

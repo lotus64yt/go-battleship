@@ -1,11 +1,11 @@
 package main
 
 import (
-	"battleship/console"
+	"battleship/app"
 )
 
 func main() {
-	console.Menu()
+	app.Menu()
 
 	select {}
 }

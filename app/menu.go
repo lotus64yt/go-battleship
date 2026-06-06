@@ -1,4 +1,4 @@
-package console
+package app
 
 import (
 	"github.com/turret-io/go-menu/menu"
@@ -7,7 +7,7 @@ import (
 func Menu() {
 	commandOptions := []menu.CommandOption{
 		menu.CommandOption{"create", "Create a game", CreateGame},
-		// menu.CommandOption{"join", "Join a game", JoinGame},
+		menu.CommandOption{"join", "Join a game", JoinGame},
 		menu.CommandOption{"stop", "Exit battleship", Exit},
 	}
 

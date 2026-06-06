@@ -3,6 +3,7 @@ package game
 import (
 	utilsboard "battleship/utils/board"
 	"fmt"
+	"strings"
 )
 
 type Cell int
@@ -18,50 +19,72 @@ type Board struct {
 	Cells [9][9]Cell
 }
 
+type GameState int
+
 type Game struct {
 	Board Board
 
 	ShipsPlaced map[int]int
 	playerTurn  bool
+
+	State     GameState
+	LastInput string
+	LastError string
 }
 
-func NewGame() *Game {
+func NewGame(creator bool) *Game {
 	return &Game{
 		ShipsPlaced: make(map[int]int),
+
+		playerTurn: creator,
+		State:      PlacingShips,
 	}
 }
 
-func (b *Board) PrintBoard() {
+func (b *Board) BoardString() []string {
+	var result []string
+	var line string
+
+	pad := func(s string) string {
+		return fmt.Sprintf("%-20s", s)
+	}
+
 	numbers := []string{" ", "1", "2", "3", "4", "5", "6", "7", "8", "9"}
 
 	for _, n := range numbers {
-		fmt.Printf("%s ", n)
+		line = fmt.Sprintf("%s%s ", line, n)
 	}
-	fmt.Println()
+	result = append(result, pad(line))
 
 	alphabet := []string{"A", "B", "C", "D", "E", "F", "G", "H", "I"}
 
 	for i, row := range b.Cells {
-		fmt.Printf("%s ", alphabet[i])
+		line = fmt.Sprintf("%s ", alphabet[i])
 		for _, cell := range row {
 			switch cell {
 			case Empty:
-				fmt.Print(". ")
+				line = fmt.Sprintf("%s. ", line)
 			case Ship:
-				fmt.Print("S ")
+				line = fmt.Sprintf("%sS ", line)
 			case Hit:
-				fmt.Print("X ")
+				line = fmt.Sprintf("%sX ", line)
 			case Miss:
-				fmt.Print("o ")
+				line = fmt.Sprintf("%so ", line)
 			default:
-				fmt.Print("? ")
+				line = fmt.Sprintf("%s? ", line)
 			}
 		}
-		fmt.Println()
+		result = append(result, pad(line))
 	}
+
+	return result
 }
 
-func (g *Game) PlaceShip(startNotation, endNotation string) error {
+func (g *Game) PlaceShip(content string) error {
+	content = strings.ReplaceAll(content, ">", "")
+	content = strings.ReplaceAll(content, "\n", "")
+	args := strings.Split(content, " ")
+	startNotation, endNotation := args[0], args[1]
 	startX, startY := utilsboard.NotationToCoords(startNotation)
 	endX, endY := utilsboard.NotationToCoords(endNotation)
 
@@ -74,7 +97,7 @@ func (g *Game) PlaceShip(startNotation, endNotation string) error {
 	}
 
 	if startX != endX && startY != endY {
-		return fmt.Errorf("must be horizontal or vertical")
+		return fmt.Errorf("must be horizontal or vertical \n See '%s'", content)
 	}
 
 	if startX == endX {
@@ -189,4 +212,45 @@ func (g *Game) Fire(notation string) (bool, bool) {
 
 	g.Board.Cells[x][y] = Miss
 	return false, false
+}
+
+func (g *Game) PrintPlacementBoard() {
+	fmt.Println("\n")
+	check := func(v bool) string {
+		if v {
+			return "X"
+		}
+		return " "
+	}
+
+	board := g.Board.BoardString()
+
+	fmt.Printf("Place your ships (Other player: Placing)\n")
+	fmt.Println()
+
+	remaingShips := []string{
+		"",
+		"Ships remaining:",
+		fmt.Sprintf("[%s] Carrier    (5)", check(g.ShipsPlaced[5] >= 1)),
+		fmt.Sprintf("[%s] BattleShip (4)", check(g.ShipsPlaced[4] >= 1)),
+		fmt.Sprintf("[%s] Crusier    (3)", check(g.ShipsPlaced[3] >= 1)),
+		fmt.Sprintf("[%s] Submarine  (3)", check(g.ShipsPlaced[3] >= 2)),
+		fmt.Sprintf("[%s] Destroyer  (2)", check(g.ShipsPlaced[2] >= 1)),
+	}
+
+	for i, l := range board {
+		var remain string = ""
+		if i <= len(remaingShips)-1 {
+			remain = remaingShips[i]
+		}
+
+		fmt.Printf("%s  %s\n", l, remain)
+	}
+
+	if g.LastError != "" {
+		fmt.Printf("\033[31m> %s\033[0m\n", g.LastInput)
+		fmt.Printf("\033[31m%s\033[0m\n", g.LastError)
+	} else {
+		fmt.Print("> ")
+	}
 }

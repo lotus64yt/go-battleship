@@ -33,52 +33,44 @@ func StartGame(conn net.Conn, creator bool) {
 		}
 	}()
 
-	inputs := make(chan string)
-
-	go func() {
-		for {
-			input, err := console.ReadLine()
-			if err != nil {
-				close(inputs)
-				return
-			}
-
-			inputs <- input
-		}
-	}()
-
 	for game.State == PlacingShips {
+	drain:
+		for {
+			select {
+			case packet, ok := <-incoming:
+				if !ok {
+					return
+				}
+				if packet.Type == "ready" {
+					game.OtherPlayerState = Playing
+				}
+			default:
+				break drain
+			}
+		}
+
 		console.Clear()
 		game.PrintPlacementBoard()
 
-		select {
-		case packet, ok := <-incoming:
-			if !ok {
-				return
-			}
+		input, err := console.ReadLine()
+		if err != nil {
+			return
+		}
 
-			switch packet.Type {
-			case "ready":
-				game.OtherPlayerState = Playing
-			}
+		game.LastInput = input
+		game.LastError = ""
 
-		case input, ok := <-inputs:
-			if !ok {
-				return
-			}
+		if err := game.PlaceShip(input); err != nil {
+			game.LastError = err.Error()
+		}
 
-			game.LastInput = input
-			game.LastError = ""
-
-			if err := game.PlaceShip(input); err != nil {
-				game.LastError = err.Error()
-			}
-
-			if game.IsAllShipsPlaced() {
-				game.State = Playing
-			}
+		if game.IsAllShipsPlaced() {
+			game.State = Playing
 		}
 	}
+
+	console.Clear()
+	game.PrintPlacementBoard()
 
 	SendReadyPacket(conn)
 	game.State = Playing
@@ -103,70 +95,69 @@ func StartGame(conn net.Conn, creator bool) {
 
 		if !game.PlayerTurn {
 			fmt.Println("Waiting for opponent to fire...")
-			select {
-			case packet, ok := <-incoming:
-				if !ok {
-					return
-				}
-
-				switch packet.Type {
-				case "attack":
-					var data AttackPacket
-					_ = json.Unmarshal(packet.Data, &data)
-
-					hit, sunk, gameOver := game.Fire(data.Notation)
-
-					resp := AttackResultPacket{
-						Hit:      hit,
-						Sunk:     sunk,
-						GameOver: gameOver,
-					}
-					respData, _ := json.Marshal(resp)
-
-					json.NewEncoder(conn).Encode(Packet{
-						Type: "attack_result",
-						Data: respData,
-					})
-
-					if gameOver {
-						game.State = Finished
-						fmt.Println("You lost!")
-						return
-					}
-				}
+			packet, ok := <-incoming
+			if !ok {
+				return
 			}
-		} else {
-			select {
-			case input, ok := <-inputs:
-				if !ok {
-					return
+
+			if packet.Type == "attack" {
+				var data AttackPacket
+				_ = json.Unmarshal(packet.Data, &data)
+
+				hit, sunk, gameOver := game.Fire(data.Notation)
+
+				resp := AttackResultPacket{
+					Hit:      hit,
+					Sunk:     sunk,
+					GameOver: gameOver,
 				}
+				respData, _ := json.Marshal(resp)
 
-				game.LastInput = input
-				game.LastError = ""
-
-				hit, sunk, gameOver, err := SendAttackPacket(conn, input, incoming)
-				if err != nil {
-					game.LastError = err.Error()
-					continue
-				}
-
-				game.PlayerTurn = false
-
-				x, y := utilsboard.NotationToCoords(input)
-				if hit {
-					game.EnemyBoard.Cells[x][y] = Hit
-				} else {
-					game.EnemyBoard.Cells[x][y] = Miss
-				}
+				json.NewEncoder(conn).Encode(Packet{
+					Type: "attack_result",
+					Data: respData,
+				})
 
 				if gameOver {
 					game.State = Finished
-					fmt.Println("You win !")
+					console.Clear()
+					game.PrintGameBoards()
+					fmt.Println("You lost!")
 					return
-				} else if sunk {
-					game.LastError = "You sunk a ship!"
 				}
+			}
+		} else {
+			input, err := console.ReadLine()
+			if err != nil {
+				return
+			}
+
+			game.LastInput = input
+			game.LastError = ""
+
+			hit, sunk, gameOver, err := SendAttackPacket(conn, input, incoming)
+			if err != nil {
+				game.LastError = err.Error()
+				continue
+			}
+
+			game.PlayerTurn = false
+
+			x, y := utilsboard.NotationToCoords(input)
+			if hit {
+				game.EnemyBoard.Cells[x][y] = Hit
+			} else {
+				game.EnemyBoard.Cells[x][y] = Miss
+			}
+
+			if gameOver {
+				game.State = Finished
+				console.Clear()
+				game.PrintGameBoards()
+				fmt.Println("You win !")
+				return
+			} else if sunk {
+				game.LastError = "You sunk a ship!"
 			}
 		}
 	}

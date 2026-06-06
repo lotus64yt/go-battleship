@@ -1,22 +1,11 @@
 package main
 
 import (
-	"battleship/utils/conn"
-	"fmt"
+	"battleship/console"
 )
 
 func main() {
-	ip, err := conn.GetLocalIp()
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
+	console.Menu()
 
-	port, err := conn.GetFreePort()
-	if err != nil {
-		fmt.Println(err.Error())
-		return
-	}
-
-	fmt.Printf("%s:%d\n", ip, port)
+	select {}
 }

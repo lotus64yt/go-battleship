@@ -1,5 +1,7 @@
-github.com/octarahq/goclic v1.0.2 h1:IAl1EvpLBV5IP7coHsYCjTz9xTopYcv2PJDocNIxPPU=
-github.com/octarahq/goclic v1.0.2/go.mod h1:9Hv8Piuu5vDOpxhUHKpVNVhBYo5XxqW3j1rIVbpJhzU=
+github.com/atotto/clipboard v0.1.4 h1:EH0zSVneZPSuFR11BlR9YppQTVDbh5+16AmcJi4g1z4=
+github.com/atotto/clipboard v0.1.4/go.mod h1:ZY9tmq7sm5xIbd9bOK4onWV4S6X0u6GY7Vn0Yu86PYI=
+github.com/octarahq/goclic v1.1.0 h1:2/ycAAFqxTTj+aYYu+1aepIrSmYnJjZ41gcZBhDyRwY=
+github.com/octarahq/goclic v1.1.0/go.mod h1:PohkA6zKfFnjhuxKbhOY/jrCN98TVoa49KEN2+FhqJM=
 golang.org/x/sys v0.44.0 h1:ildZl3J4uzeKP07r2F++Op7E9B29JRUy+a27EibtBTQ=
 golang.org/x/sys v0.44.0/go.mod h1:4GL1E5IUh+htKOUEOaiffhrAeqysfVGipDYzABqnCmw=
 golang.org/x/term v0.43.0 h1:S4RLU2sB31O/NCl+zFN9Aru9A/Cq2aqKpTZJ6B+DwT4=

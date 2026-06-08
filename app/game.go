@@ -11,7 +11,7 @@ import (
 	"battleship/game"
 )
 
-func CreateGame(args ...string) error {
+func CreateGame() error {
 	s := &server.Server{}
 
 	if err := s.Init(); err != nil {

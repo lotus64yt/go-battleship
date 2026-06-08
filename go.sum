@@ -1,2 +1,6 @@
-github.com/turret-io/go-menu v1.0.2 h1:wnxh52FwySBKHgASpJq/x5fQLYwcZwroJVFf4uJ8v/g=
-github.com/turret-io/go-menu v1.0.2/go.mod h1:k7e/ziL/JqwImhubSklas2BjL8Co9zzIrv68Qsmufsk=
+github.com/octarahq/goclic v1.0.2 h1:IAl1EvpLBV5IP7coHsYCjTz9xTopYcv2PJDocNIxPPU=
+github.com/octarahq/goclic v1.0.2/go.mod h1:9Hv8Piuu5vDOpxhUHKpVNVhBYo5XxqW3j1rIVbpJhzU=
+golang.org/x/sys v0.44.0 h1:ildZl3J4uzeKP07r2F++Op7E9B29JRUy+a27EibtBTQ=
+golang.org/x/sys v0.44.0/go.mod h1:4GL1E5IUh+htKOUEOaiffhrAeqysfVGipDYzABqnCmw=
+golang.org/x/term v0.43.0 h1:S4RLU2sB31O/NCl+zFN9Aru9A/Cq2aqKpTZJ6B+DwT4=
+golang.org/x/term v0.43.0/go.mod h1:lrhlHNdQJHO+1qVYiHfFKVuVioJIheAc3fBSMFYEIsk=

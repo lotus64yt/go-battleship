@@ -1,18 +1,31 @@
 package app
 
 import (
-	"github.com/turret-io/go-menu/menu"
+	menu "github.com/octarahq/goclic"
+	"github.com/octarahq/goclic/components"
 )
 
 func Menu() {
-	commandOptions := []menu.CommandOption{
-		menu.CommandOption{"create", "Create a game", CreateGame},
-		menu.CommandOption{"join", "Join a game", JoinGame},
-		menu.CommandOption{"stop", "Exit battleship", Exit},
+	m := menu.NewMenu()
+	var ip string
+	var action func()
+
+	m.Add(components.NewDisplay("BattleGO"))
+	m.Add(components.NewButton("Create a lobby", func() {
+		action = func() { CreateGame() }
+		m.Stop()
+	}))
+	m.Add(components.NewInput("Host IP:Port (Required)", &ip))
+	m.Add(components.NewButton("Join", func() {
+		if ip == "" {
+			return
+		}
+		action = func() { JoinGame(ip) }
+		m.Stop()
+	}))
+	m.Start()
+
+	if action != nil {
+		action()
 	}
-
-	menuOptions := menu.NewMenuOptions("'menu' for help > ", 0)
-
-	menu := menu.NewMenu(commandOptions, menuOptions)
-	menu.Start()
 }

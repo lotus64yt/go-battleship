@@ -5,7 +5,7 @@ import (
 )
 
 func main() {
-	app.Menu()
-
-	select {}
+	for {
+		app.Menu()
+	}
 }

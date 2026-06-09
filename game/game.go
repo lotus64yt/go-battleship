@@ -39,6 +39,8 @@ func StartGame(conn net.Conn, creator bool) {
 			select {
 			case packet, ok := <-incoming:
 				if !ok {
+					fmt.Println("\nOpponent disconnected!")
+					time.Sleep(2 * time.Second)
 					return
 				}
 				if packet.Type == "ready" {
@@ -78,7 +80,12 @@ func StartGame(conn net.Conn, creator bool) {
 	fmt.Println("You are ready ! Waiting for your oponent...")
 
 	for game.OtherPlayerState != Playing {
-		packet := <-incoming
+		packet, ok := <-incoming
+		if !ok {
+			fmt.Println("\nOpponent disconnected!")
+			time.Sleep(2 * time.Second)
+			return
+		}
 
 		switch packet.Type {
 		case "ready":
@@ -97,6 +104,8 @@ func StartGame(conn net.Conn, creator bool) {
 			fmt.Println("Waiting for opponent to fire...")
 			packet, ok := <-incoming
 			if !ok {
+				fmt.Println("\nOpponent disconnected!")
+				time.Sleep(2 * time.Second)
 				return
 			}
 
@@ -123,6 +132,7 @@ func StartGame(conn net.Conn, creator bool) {
 					console.Clear()
 					game.PrintGameBoards()
 					fmt.Println("You lost!")
+					time.Sleep(3 * time.Second)
 					return
 				}
 			}
@@ -137,6 +147,11 @@ func StartGame(conn net.Conn, creator bool) {
 
 			hit, sunk, gameOver, err := SendAttackPacket(conn, input, incoming)
 			if err != nil {
+				if err.Error() == "connection closed" {
+					fmt.Println("\nOpponent disconnected!")
+					time.Sleep(2 * time.Second)
+					return
+				}
 				game.LastError = err.Error()
 				continue
 			}
@@ -155,6 +170,7 @@ func StartGame(conn net.Conn, creator bool) {
 				console.Clear()
 				game.PrintGameBoards()
 				fmt.Println("You win !")
+				time.Sleep(3 * time.Second)
 				return
 			} else if sunk {
 				game.LastError = "You sunk a ship!"

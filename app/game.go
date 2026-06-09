@@ -2,13 +2,12 @@ package app
 
 import (
 	"battleship/server"
-	"context"
 	"fmt"
 	"log"
-	"net"
-	"time"
+	"strings"
 
 	"battleship/game"
+	"golang.org/x/net/websocket"
 )
 
 func CreateGame() error {
@@ -18,28 +17,34 @@ func CreateGame() error {
 		return err
 	}
 
-	fmt.Printf("Room created, connect with :\n   > join %s:%d\n", s.Ip, s.Port)
+	fmt.Printf("Room created!\nShare this address with your friend so they can join:\n   -> %s:%d\n\n", s.Ip, s.Port)
 
 	return s.Start()
 }
 
 func JoinGame(args ...string) error {
 	if len(args) == 0 {
-		fmt.Printf("Please provide ip:port\n")
+		fmt.Printf("Please provide ip:port or URL\n")
 		return nil
 	}
 
-	var d net.Dialer
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
-	defer cancel()
+	urlStr := args[0]
+	if !strings.HasPrefix(urlStr, "ws://") && !strings.HasPrefix(urlStr, "wss://") && !strings.HasPrefix(urlStr, "http://") && !strings.HasPrefix(urlStr, "https://") {
+		urlStr = "ws://" + urlStr
+	} else if strings.HasPrefix(urlStr, "http://") {
+		urlStr = strings.Replace(urlStr, "http://", "ws://", 1)
+	} else if strings.HasPrefix(urlStr, "https://") {
+		urlStr = strings.Replace(urlStr, "https://", "wss://", 1)
+	}
 
-	conn, err := d.DialContext(ctx, "tcp", args[0])
+	ws, err := websocket.Dial(urlStr, "", "http://localhost/")
 	if err != nil {
 		log.Fatalf("Failed to dial: %v", err)
 	}
-	defer conn.Close()
+	ws.PayloadType = websocket.TextFrame
+	defer ws.Close()
 
-	game.StartGame(conn, false)
+	game.StartGame(ws, false)
 
 	return nil
 }

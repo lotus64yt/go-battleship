@@ -5,6 +5,9 @@ import (
 	"battleship/utils/conn"
 	"fmt"
 	"net"
+	"net/http"
+
+	"golang.org/x/net/websocket"
 )
 
 type Server struct {
@@ -12,6 +15,7 @@ type Server struct {
 	Port int
 
 	listener net.Listener
+	connChan chan net.Conn
 }
 
 func (s *Server) Init() error {
@@ -33,6 +37,21 @@ func (s *Server) Init() error {
 	}
 
 	s.listener = l
+	s.connChan = make(chan net.Conn, 1)
+
+	mux := http.NewServeMux()
+	mux.Handle("/", websocket.Handler(func(ws *websocket.Conn) {
+		ws.PayloadType = websocket.TextFrame
+		s.connChan <- ws
+		var dummy []byte
+		for {
+			if _, err := ws.Read(dummy); err != nil {
+				break
+			}
+		}
+	}))
+
+	go http.Serve(s.listener, mux)
 
 	return nil
 }
@@ -40,10 +59,7 @@ func (s *Server) Init() error {
 func (s *Server) Start() error {
 	fmt.Println("Waiting for player...")
 
-	conn, err := s.listener.Accept()
-	if err != nil {
-		return err
-	}
+	conn := <-s.connChan
 
 	fmt.Println("Player connected!")
 
